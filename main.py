@@ -140,7 +140,7 @@ class StockAlertsBot:
             except discord.errors.NotFound:
                 pass  # Message already deleted
             except discord.errors.Forbidden:
-                await ctx.send("⚠️ Cannot delete your message. Please delete it manually for security.")
+                await ctx.send("⚠️ Cannot delete your message in private chats!. Please delete it manually for security.")
 
             # Show loading message
             loading_msg = await ctx.send("🔄 Registering your account...")
@@ -156,13 +156,14 @@ class StockAlertsBot:
                     timeout=15  # 15 second timeout
                 )
 
-                print(f"📡 Registration response status: {response.status_code}")
+                print(f"📡 Registration response status: {response.status_code,},{response.text}")
 
                 if response.status_code == 201:
                     # Successful registration
                     await ctx.send("✅ Registration successful! You can now log in.")
                 else:
-                    await ctx.send("❌ Registration failed. Please try again.")
+                    await ctx.send(f"❌ Registration failed, {response.text}")
+                    print(f"❌ Registration failed, {response.text}")
 
             except Exception as e:
                 print(f"⚠️ Error during registration: {e}")
@@ -195,7 +196,7 @@ class StockAlertsBot:
                 print("❌ Message already deleted or doesn't exist.")
             except discord.errors.Forbidden:
                 print("🚫 Bot lacks permission to delete this message.")
-                await ctx.send("⚠️ Cannot delete your message. Please delete it manually for security.")
+                await ctx.send("⚠️ Cannot delete your message in private chat!. Please delete it manually for security.")
             except Exception as e:
                 print(f"⚠️ Unexpected error deleting message: {e}")
                 await ctx.send("⚠️ An unexpected error occurred. Please try again later.")
@@ -239,23 +240,34 @@ class StockAlertsBot:
                         
                         # Try to get user's alert summary
                         alert_summary = ""
-                        try:
+                    try:
                             summary_response = requests.get(
                                 f"{self.django_api_url}/api/alerts/summary/",
                                 headers={'Authorization': f"Bearer {access_token}"},
                                 timeout=10
                             )
                             if summary_response.status_code == 200:
-                                summary = summary_response.json()
-                                alert_summary = (
-                                    f"\n📊 **Your Alert Summary:**\n"
-                                    f"• Active alerts: {summary.get('active_count', 0)}\n"
-                                    f"• Triggered alerts: {summary.get('triggered_count', 0)}"
-                                )
-                        except Exception as e:
+                                 data = summary_response.json()
+                                 summary_data = data.get('summary', {})
+                                 alert_summary = (
+                                     f"\n📊 **Your Alert Summary:**\n"
+                                     f"• Active alerts: {summary_data.get('active_alerts', 0)}\n"
+                                 )
+                                 try:
+                                     triggered_response = requests.get(
+                                         f"{self.django_api_url}/api/alerts/triggered/",
+                                         headers={'Authorization': f"Bearer {access_token}"},
+                                         timeout=10
+                                     )
+                                     if triggered_response.status_code == 200:
+                                         triggered_data = triggered_response.json()
+                                         alert_summary += f"• Triggered alerts: {triggered_data.get('count', 0)}"
+                                 except Exception as e:
+                                     print(f"⚠️ Could not fetch triggered alerts: {e}")
+                    except Exception as e:
                             print(f"⚠️ Could not fetch alert summary: {e}")
-                        
-                        # Create success embed
+                    
+                    # Create success embed
                     embed = discord.Embed(
                         title="✅ Successfully Connected!",
                         description=f"Welcome **{username}**! Your Discord account is now connected to your stock alerts system.",
@@ -513,7 +525,7 @@ class StockAlertsBot:
                 await loading_msg.edit(content="", embed=embed)
                 
         @self.bot.command(name='alert', aliases=['createalert', 'setalert'])
-        async def create_alert_command(ctx, stock_id: int, condition: str, price: float, duration: int = None, alert_type: str = "THRESHOLD"):
+        async def create_alert_command(ctx, stock_id: int, condition: str, price: str, duration: int = None, alert_type: str = "THRESHOLD"):
                 """
                 Create a stock price alert
                 Usage: !alert <stock_id> <condition> <price> [duration_minutes]
@@ -548,8 +560,19 @@ class StockAlertsBot:
                             description="Duration must be a positive number of minutes",
                             color=0xff0000
                         )
+                        await ctx.send(embed=embed)
+                        return
+                    
+                try:
+                  price = float(price)
+                except ValueError:
+                    embed = discord.Embed(
+                       title="❌ Invalid Price",
+                       description="Price must be a valid number (example: `150.50`).",
+                       color=0xff0000
+                    )
                     await ctx.send(embed=embed)
-                    return
+                    return    
 
 
                 loading_msg = await ctx.send("🔔 Creating stock alert...")
@@ -569,7 +592,7 @@ class StockAlertsBot:
                     # Prepare alert data
                     alert_data = {
                         "stock": stock_id,
-                        "alert_type": alert_type,
+                        "alert_type": alert_type.upper(),  # Ensure alert type is uppercase
                         "condition": condition,
                         "threshold_price": str(price),  # Convert to string as in your example
                         "is_active": True
@@ -1118,7 +1141,7 @@ class StockAlertsBot:
             try:
                 # Call the refresh endpoint from your Django API
                 response = requests.post(
-                    f"{self.django_api_url}/api/stocks/actions/refresh-prices/",
+                    f"{self.django_api_url}/api/stocks/refresh_prices/",
                     headers={'Authorization': f"Bearer {session['access_token']}"},
                     timeout=30  # Longer timeout for refresh operation
                 )
