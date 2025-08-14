@@ -1,6 +1,6 @@
 """
 Stock Alerts Discord Bot Plugin
-Connects to your AWS-deployed Django stock alerts system
+Connects AWS-deployed Django stock alerts system
 
 This bot provides:
 1. User authentication with your Django API
