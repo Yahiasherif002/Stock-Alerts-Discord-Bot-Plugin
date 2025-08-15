@@ -8,7 +8,7 @@ A Discord bot that connects AWS-deployed Django stock alerts system, providing r
 
 ## 🌟 Features
 
-- **🔐 Secure Authentication** - Login with your Django account
+- **🔐 Secure Authentication** - Login with your  account
 - **📈 Real-time Alerts** - Get notified when your stock alerts trigger
 - **💬 Rich Discord Embeds** - Beautiful formatted messages with colors and emojis
 - **🔄 Auto-monitoring** - Bot checks for triggered alerts every 2 minutes
@@ -66,7 +66,7 @@ Create a `.env` file in your project directory:
 # Discord Bot Token (from Discord Developer Portal)
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 
-# Your AWS Django API URL (replace with your actual URL)
+#  AWS Django API URL 
 DJANGO_API_URL=https://your-aws-deployment-url.com
 
 # Optional: Custom bot prefix (default is !)
